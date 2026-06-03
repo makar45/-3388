@@ -3,101 +3,262 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Статус подключения</title>
+    <title>Авторизация в игре</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #1a1a1a; /* Темный игровой стиль */
+            color: #ffffff;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
+            overflow: hidden;
         }
-        .card {
-            background: #ffffff;
+
+        /* Индикатор подключения сверху */
+        .network-status {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #d93025;
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease;
+            transform: translateY(-100%); /* По умолчанию скрыта */
+            z-index: 1000;
+        }
+
+        /* Класс, который показывается, если интернета нет */
+        .network-status.offline {
+            transform: translateY(0);
+        }
+
+        .auth-card {
+            background: #2d2d2d;
             padding: 40px;
-            border-radius: 8px;
-            border: 1px solid #dadce0;
-            max-width: 380px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            max-width: 360px;
             width: 100%;
             box-sizing: border-box;
+            border: 1px solid #3d3d3d;
         }
-        .error-icon {
-            color: #d93025;
+
+        h2 {
+            margin: 0 0 24px 0;
             font-size: 24px;
-            margin-bottom: 10px;
+            text-align: center;
+            font-weight: 600;
+            color: #3ecf8e; /* Цвет Supabase */
         }
-        h1 {
-            font-size: 22px;
-            font-weight: 400;
-            color: #202124;
-            margin: 0 0 10px 0;
-        }
-        p {
-            font-size: 14px;
-            color: #5f6368;
-            line-height: 1.5;
-            margin: 0 0 30px 0;
-        }
-        .input-wrapper {
-            position: relative;
+
+        .input-group {
             margin-bottom: 20px;
         }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #aaaaaa;
+        }
+
         input {
             width: 100%;
-            padding: 14px;
+            padding: 12px;
             font-size: 14px;
-            border: 1px solid #dadce0;
-            border-radius: 4px;
+            background-color: #1e1e1e;
+            border: 1px solid #4d4d4d;
+            border-radius: 6px;
+            color: white;
             outline: none;
             box-sizing: border-box;
-            transition: border-color 0.15s;
+            transition: border-color 0.2s;
         }
+
         input:focus {
-            border-color: #1a73e8;
+            border-color: #3ecf8e;
         }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 28px;
+        }
+
         button {
-            background-color: #1a73e8;
-            color: white;
-            border: none;
-            padding: 10px 24px;
+            flex: 1;
+            padding: 12px;
             font-size: 14px;
-            font-weight: 500;
-            border-radius: 4px;
+            font-weight: bold;
+            border-radius: 6px;
+            border: none;
             cursor: pointer;
-            float: right;
-            transition: background-color 0.15s;
+            transition: background 0.2s, transform 0.1s;
         }
-        button:hover {
-            background-color: #1557b0;
+
+        button:active {
+            transform: scale(0.98);
         }
-        .clearfix::after {
-            content: "";
-            clear: both;
-            display: table;
+
+        .btn-login {
+            background-color: #3ecf8e;
+            color: #1a1a1a;
+        }
+
+        .btn-login:hover {
+            background-color: #34b279;
+        }
+
+        .btn-register {
+            background-color: #4f4f4f;
+            color: white;
+        }
+
+        .btn-register:hover {
+            background-color: #5f5f5f;
+        }
+
+        #status-message {
+            margin-top: 20px;
+            font-size: 14px;
+            text-align: center;
+            min-height: 20px;
         }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <div class="error-icon">⚠️</div>
-        <h1>Проблема с Wi-Fi</h1>
-        <p>Не удалось установить автоматическое соединение. Чтобы восстановить доступ к сети, введите параметры конфигурации вручную.</p>
-        
-        <form action="#" method="POST" class="clearfix">
-            <div class="input-wrapper">
-                <input type="text" name="network_name" placeholder="Имя сети (SSID)" required autocomplete="off">
-            </div>
-            
-            <div class="input-wrapper">
-                <input type="password" name="network_password" placeholder="Пароль" required>
-            </div>
-            
-            <button type="submit">Повторить попытку</button>
-        </form>
+    <div id="network-banner" class="network-status">
+        ⚠️ У вас нет подключения к интернету. Проверьте сеть.
     </div>
 
+    <div class="auth-card">
+        <h2>Вход в аккаунт</h2>
+        
+        <div class="input-group">
+            <label for="email">Электронная почта (Email)</label>
+            <input type="email" id="email" placeholder="name@example.com" required>
+        </div>
+        
+        <div class="input-group">
+            <label for="password">Пароль</label>
+            <input type="password" id="password" placeholder="Минимум 6 символов" required>
+        </div>
+        
+        <div class="btn-group">
+            <button class="btn-register" onclick="signUpUser()">Регистрация</button>
+            <button class="btn-login" onclick="signInUser()">Войти</button>
+        </div>
+
+        <div id="status-message"></div>
+    </div>
+
+    <script>
+        // ==========================================
+        // НАСТРОЙКА SUPABASE
+        // ==========================================
+        
+        // Вставь сюда URL своего проекта из панели Supabase (Project Settings -> API)
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co'; 
+        
+        // Твой публичный ключ (уже добавлен)
+        const SUPABASE_ANON_KEY = 'sb_publishable_n98OKq8UriMSC17FzB60CQ_zHzf6W83';
+        
+        // Создаем подключение к Supabase
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const statusMsg = document.getElementById('status-message');
+
+        // ==========================================
+        // ЛОГИКА ПРОВЕРКИ ИНТЕРНЕТА
+        // ==========================================
+        const networkBanner = document.getElementById('network-banner');
+
+        function updateOnlineStatus() {
+            if (navigator.onLine) {
+                networkBanner.classList.remove('offline'); // Скрываем плашку, если сеть есть
+            } else {
+                networkBanner.classList.add('offline');    // Показываем плашку, если сети нет
+            }
+        }
+
+        // Следим за изменениями сети в реальном времени
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+        
+        // Запускаем проверку один раз при загрузке страницы
+        updateOnlineStatus();
+
+
+        // ==========================================
+        // ФУНКЦИИ АВТОРИЗАЦИИ
+        // ==========================================
+
+        // 1. Регистрация нового аккаунта
+        async function signUpUser() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            if(!email || !password) {
+                showLog('Заполните все поля!', 'orange');
+                return;
+            }
+
+            showLog('Регистрация...', 'white');
+
+            const { data, error } = await supabase.auth.signUp({
+                email: email,
+                password: password,
+            });
+
+            if (error) {
+                showLog('Ошибка: ' + error.message, '#ff4d4d');
+            } else {
+                showLog('Успешно зарегистрирован!', '#3ecf8e');
+            }
+        }
+
+        // 2. Вход в существующий аккаунт
+        async function signInUser() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            if(!email || !password) {
+                showLog('Заполните все поля!', 'orange');
+                return;
+            }
+
+            showLog('Проверка данных...', 'white');
+
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
+
+            if (error) {
+                showLog('Ошибка входа: ' + error.message, '#ff4d4d');
+            } else {
+                showLog('Вы успешно вошли на сайт!', '#3ecf8e');
+                // Здесь код перенаправления (например, в игру):
+                // window.location.href = '/game.html';
+            }
+        }
+
+        // Вспомогательная функция для вывода сообщений на экран
+        function showLog(text, color) {
+            statusMsg.innerText = text;
+            statusMsg.style.color = color;
+        }
+    </script>
 </body>
 </html>
